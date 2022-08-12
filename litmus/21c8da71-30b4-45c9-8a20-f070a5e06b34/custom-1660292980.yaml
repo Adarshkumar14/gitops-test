@@ -5,6 +5,7 @@ metadata:
   labels:
     cluster_id: bbf6138f-d00b-4b86-95be-77e75ef30de3
     subject: custom_litmusctl-1
+    workflow_id: 466a4552-b284-404c-92ee-d75dd54f4008
     workflows.argoproj.io/controller-instanceid: bbf6138f-d00b-4b86-95be-77e75ef30de3
   name: custom-1660292980
   namespace: litmusctl-1
