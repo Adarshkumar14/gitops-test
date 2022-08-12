@@ -1,0 +1,163 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  creationTimestamp: null
+  labels:
+    cluster_id: 40fb4571-10b1-43bd-a494-fa3e005bcb89
+    subject: custom_a1
+    workflow_id: 7d8f97c3-1a0c-4556-bef7-f31f40925c76
+    workflows.argoproj.io/controller-instanceid: 40fb4571-10b1-43bd-a494-fa3e005bcb89
+  name: custom-1660296403
+  namespace: a1
+spec:
+  arguments:
+    parameters:
+    - name: adminModeNamespace
+      value: a1
+  entrypoint: custom-chaos
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+  serviceAccountName: argo-chaos
+  templates:
+  - inputs: {}
+    metadata: {}
+    name: custom-chaos
+    outputs: {}
+    steps:
+    - - arguments: {}
+        name: install-chaos-experiments
+        template: install-chaos-experiments
+    - - arguments: {}
+        name: pod-delete-zfl
+        template: pod-delete-zfl
+  - container:
+      args:
+      - kubectl apply -f /tmp/pod-delete-zfl.yaml -n {{workflow.parameters.adminModeNamespace}}
+        &&  sleep 30
+      command:
+      - sh
+      - -c
+      image: litmuschaos/k8s:2.11.0
+      name: ""
+      resources: {}
+    inputs:
+      artifacts:
+      - name: pod-delete-zfl
+        path: /tmp/pod-delete-zfl.yaml
+        raw:
+          data: |
+            apiVersion: litmuschaos.io/v1alpha1
+            description:
+              message: |
+                Deletes a pod belonging to a deployment/statefulset/daemonset
+            kind: ChaosExperiment
+            metadata:
+              name: pod-delete
+              version: 0.1.19
+            spec:
+              definition:
+                scope: Namespaced
+                permissions:
+                  - apiGroups:
+                      - ""
+                      - apps
+                      - batch
+                      - litmuschaos.io
+                    resources:
+                      - deployments
+                      - jobs
+                      - pods
+                      - pods/log
+                      - events
+                      - chaosengines
+                      - chaosexperiments
+                      - chaosresults
+                    verbs:
+                      - create
+                      - list
+                      - get
+                      - patch
+                      - update
+                      - delete
+                      - deletecollection
+                image: litmuschaos/go-runner:latest
+                imagePullPolicy: Always
+                args:
+                  - -c
+                  - ./experiments -name pod-delete
+                command:
+                  - /bin/bash
+                env:
+                  - name: TOTAL_CHAOS_DURATION
+                    value: "15"
+                  - name: RAMP_TIME
+                    value: ""
+                  - name: FORCE
+                    value: "true"
+                  - name: CHAOS_INTERVAL
+                    value: "5"
+                  - name: PODS_AFFECTED_PERC
+                    value: ""
+                  - name: LIB
+                    value: litmus
+                  - name: TARGET_POD
+                    value: ""
+                  - name: SEQUENCE
+                    value: parallel
+                labels:
+                  name: pod-delete
+                  app.kubernetes.io/part-of: litmus
+    metadata: {}
+    name: install-chaos-experiments
+    outputs: {}
+  - container:
+      args:
+      - -file=/tmp/chaosengine-pod-delete-zfl.yaml
+      - -saveName=/tmp/engine-name
+      image: litmuschaos/litmus-checker:2.11.0
+      name: ""
+      resources: {}
+    inputs:
+      artifacts:
+      - name: pod-delete-zfl
+        path: /tmp/chaosengine-pod-delete-zfl.yaml
+        raw:
+          data: |
+            apiVersion: litmuschaos.io/v1alpha1
+            kind: ChaosEngine
+            metadata:
+              namespace: "{{workflow.parameters.adminModeNamespace}}"
+              generateName: pod-delete-zfl
+              labels:
+                instance_id: 78347ca2-e2fb-47af-ad4b-c173cd292b9c
+            spec:
+              appinfo:
+                appns: default
+                applabel: app=nginx
+                appkind: deployment
+              annotationCheck: "true"
+              engineState: active
+              auxiliaryAppInfo: ""
+              chaosServiceAccount: litmus-admin
+              monitoring: false
+              jobCleanUpPolicy: retain
+              experiments:
+                - name: pod-delete
+                  spec:
+                    components:
+                      env:
+                        - name: TOTAL_CHAOS_DURATION
+                          value: "30"
+                        - name: CHAOS_INTERVAL
+                          value: "10"
+                        - name: FORCE
+                          value: "false"
+    metadata:
+      labels:
+        weight: "10"
+    name: pod-delete-zfl
+    outputs: {}
+status:
+  finishedAt: null
+  startedAt: null
